@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
+import { useState, useEffect } from "react";
+import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import {
   Tooltip,
   TooltipContent,

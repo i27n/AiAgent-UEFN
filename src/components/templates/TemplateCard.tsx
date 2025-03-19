@@ -2,14 +2,15 @@ import React from "react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Copy, Download } from "lucide-react";
-import { toastManager } from "../ui/toast";
 import { t } from "@/lib/i18n";
+import { copyToClipboard, downloadFile } from "@/lib/utils";
 
 interface TemplateCardProps {
   title: string;
   description: string;
   code: string;
   onSelect: (code: string) => void;
+  category?: string;
 }
 
 const TemplateCard = ({
@@ -17,25 +18,16 @@ const TemplateCard = ({
   description,
   code,
   onSelect,
+  category,
 }: TemplateCardProps) => {
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(code);
-    toastManager.success(t("template.copied", "Template copied to clipboard"));
+    copyToClipboard(code);
   };
 
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const blob = new Blob([code], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title.toLowerCase().replace(/\s+/g, "-")}.verse`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toastManager.success(t("template.downloaded", "Template downloaded"));
+    downloadFile(code, `${title.toLowerCase().replace(/\s+/g, "-")}.verse`);
   };
 
   return (
@@ -44,7 +36,14 @@ const TemplateCard = ({
       onClick={() => onSelect(code)}
     >
       <div className="flex justify-between items-start mb-2">
-        <h3 className="font-medium text-[#f3f3f3]">{title}</h3>
+        <div>
+          <h3 className="font-medium text-[#f3f3f3]">{title}</h3>
+          {category && (
+            <span className="text-xs text-[#a0a0a0] bg-[#2e2e2e] px-2 py-0.5 rounded-full mt-1 inline-block">
+              {category}
+            </span>
+          )}
+        </div>
         <div className="flex space-x-2">
           <Button
             variant="ghost"
