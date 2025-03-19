@@ -115,6 +115,8 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
   }, []);
 
   const handleSaveSettings = () => {
+    // Show saving indicator
+    toastManager.info("Saving settings...");
     // Initialize the AI service with the new settings
     if (apiKey) {
       getAIService({
@@ -168,6 +170,11 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
 
       // Show success message using toast
       toastManager.success("Settings saved and applied successfully!");
+
+      // Reload the page to apply settings fully
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
 
       onSave();
     } else {
@@ -279,7 +286,8 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder={t("ai.settings.apiKey.placeholder")}
-                className="bg-[#141414] border-[#2e2e2e] text-[#e1e1e1]"
+                className="bg-[#141414] border-[#2e2e2e] text-[#e1e1e1] w-full"
+                dir="ltr"
               />
               <p className="text-xs text-[#a0a0a0]">
                 {t("ai.settings.apiKey.help")}{" "}

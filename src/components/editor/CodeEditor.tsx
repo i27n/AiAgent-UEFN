@@ -91,6 +91,9 @@ const CodeEditor = () => {
   };
 
   const handlePromptSubmit = async (prompt: string) => {
+    // Clear previous errors and results
+    setErrors([]);
+    setGeneratedCode("");
     setIsProcessing(true);
     setErrors([]);
     setResponseMetadata(null);
@@ -99,6 +102,13 @@ const CodeEditor = () => {
       const apiKey = localStorage.getItem("geminiApiKey");
 
       if (!apiKey) {
+        // Show settings dialog if API key is not set
+        const settingsButton = document.querySelector(
+          "[data-settings-trigger]",
+        );
+        if (settingsButton) {
+          (settingsButton as HTMLButtonElement).click();
+        }
         throw new Error(
           t(
             "editor.error.noApiKey",

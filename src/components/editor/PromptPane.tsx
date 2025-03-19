@@ -199,6 +199,7 @@ const PromptPane = ({
               className="h-full min-h-[500px] resize-none bg-[#141414] text-[#e1e1e1] border-[#2e2e2e] focus-visible:ring-[#2e2e2e]"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
+              dir="auto"
             />
           </CardContent>
 

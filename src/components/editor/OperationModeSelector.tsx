@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import {
   Tooltip,
@@ -9,7 +9,13 @@ import {
 import { Code, Bug, HelpCircle, GitBranch } from "lucide-react";
 import { t } from "@/lib/i18n";
 
-export type OperationMode = "generate" | "debug" | "explain" | "continue";
+export type OperationMode =
+  | "generate"
+  | "debug"
+  | "explain"
+  | "continue"
+  | "optimize"
+  | "document";
 
 interface OperationModeSelectorProps {
   selectedMode?: OperationMode;
@@ -52,6 +58,7 @@ const OperationModeSelector = ({
                 <TabsTrigger
                   value="generate"
                   className="flex items-center gap-2"
+                  dir="auto"
                 >
                   <Code size={16} />
                   <span className="hidden sm:inline">
@@ -68,7 +75,11 @@ const OperationModeSelector = ({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <TabsTrigger value="debug" className="flex items-center gap-2">
+                <TabsTrigger
+                  value="debug"
+                  className="flex items-center gap-2"
+                  dir="auto"
+                >
                   <Bug size={16} />
                   <span className="hidden sm:inline">
                     {t("editor.mode.debug", "Debug")}
@@ -85,6 +96,7 @@ const OperationModeSelector = ({
                 <TabsTrigger
                   value="explain"
                   className="flex items-center gap-2"
+                  dir="auto"
                 >
                   <HelpCircle size={16} />
                   <span className="hidden sm:inline">
@@ -102,6 +114,7 @@ const OperationModeSelector = ({
                 <TabsTrigger
                   value="continue"
                   className="flex items-center gap-2"
+                  dir="auto"
                 >
                   <GitBranch size={16} />
                   <span className="hidden sm:inline">

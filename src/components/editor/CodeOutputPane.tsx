@@ -172,7 +172,10 @@ const CodeOutputPane = ({
       <CardContent className="p-0 flex-grow relative">
         <ScrollArea className="h-full">
           <div className="relative">
-            <pre className="p-4 font-mono text-sm text-[#f3f3f3] whitespace-pre overflow-x-auto">
+            <pre
+              className="p-4 font-mono text-sm text-[#f3f3f3] whitespace-pre overflow-x-auto"
+              dir="ltr"
+            >
               {code.split("\n").map((line, index) => (
                 <div
                   key={index}

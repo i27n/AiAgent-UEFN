@@ -222,10 +222,10 @@ export const initLanguage = (): void => {
 };
 
 // Get translation for a key
-export const t = (key: string): string => {
+export const t = (key: string, defaultValue?: string): string => {
   if (!translations[key]) {
     console.warn(`Translation key not found: ${key}`);
-    return key;
+    return defaultValue || key;
   }
   return translations[key][currentLanguage];
 };
@@ -240,6 +240,13 @@ export const setLanguage = (language: Language): void => {
   // Update document direction
   document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
   document.documentElement.lang = language;
+
+  // Apply RTL-specific styles for Arabic
+  if (language === "ar") {
+    document.body.classList.add("rtl-layout");
+  } else {
+    document.body.classList.remove("rtl-layout");
+  }
 };
 
 // Get current language

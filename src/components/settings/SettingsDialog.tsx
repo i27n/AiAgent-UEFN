@@ -254,9 +254,11 @@ const SettingsDialog = ({ open = true, onOpenChange }: SettingsDialogProps) => {
                   className={`${language === "english" ? "bg-primary" : "bg-[#1b1b1b]"}`}
                   onClick={() => {
                     setLanguage("english");
-                    import("@/lib/i18n").then(({ setLanguage }) =>
-                      setLanguage("en"),
-                    );
+                    import("@/lib/i18n").then(({ setLanguage }) => {
+                      setLanguage("en");
+                      // Force reload to apply language changes properly
+                      setTimeout(() => window.location.reload(), 100);
+                    });
                   }}
                 >
                   English
@@ -266,9 +268,11 @@ const SettingsDialog = ({ open = true, onOpenChange }: SettingsDialogProps) => {
                   className={`${language === "arabic" ? "bg-primary" : "bg-[#1b1b1b]"}`}
                   onClick={() => {
                     setLanguage("arabic");
-                    import("@/lib/i18n").then(({ setLanguage }) =>
-                      setLanguage("ar"),
-                    );
+                    import("@/lib/i18n").then(({ setLanguage }) => {
+                      setLanguage("ar");
+                      // Force reload to apply language changes properly
+                      setTimeout(() => window.location.reload(), 100);
+                    });
                   }}
                 >
                   العربية
