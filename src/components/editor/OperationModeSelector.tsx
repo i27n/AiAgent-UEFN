@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
 import {
   Tooltip,
@@ -7,6 +7,7 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip";
 import { Code, Bug, HelpCircle, GitBranch } from "lucide-react";
+import { t } from "@/lib/i18n";
 
 export type OperationMode = "generate" | "debug" | "explain" | "continue";
 
@@ -19,6 +20,20 @@ const OperationModeSelector = ({
   selectedMode = "generate",
   onModeChange = () => {},
 }: OperationModeSelectorProps) => {
+  // Force re-render when language changes
+  const [, setRender] = useState(0);
+
+  useEffect(() => {
+    const handleLanguageChange = () => {
+      setRender((prev) => prev + 1);
+    };
+
+    window.addEventListener("languageChanged", handleLanguageChange);
+    return () => {
+      window.removeEventListener("languageChanged", handleLanguageChange);
+    };
+  }, []);
+
   const handleValueChange = (value: string) => {
     onModeChange(value as OperationMode);
   };
@@ -39,11 +54,15 @@ const OperationModeSelector = ({
                   className="flex items-center gap-2"
                 >
                   <Code size={16} />
-                  <span className="hidden sm:inline">Generate</span>
+                  <span className="hidden sm:inline">
+                    {t("editor.mode.generate", "Generate")}
+                  </span>
                 </TabsTrigger>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Generate new Verse script</p>
+                <p>
+                  {t("editor.tooltip.generate", "Generate new Verse script")}
+                </p>
               </TooltipContent>
             </Tooltip>
 
@@ -51,11 +70,13 @@ const OperationModeSelector = ({
               <TooltipTrigger asChild>
                 <TabsTrigger value="debug" className="flex items-center gap-2">
                   <Bug size={16} />
-                  <span className="hidden sm:inline">Debug</span>
+                  <span className="hidden sm:inline">
+                    {t("editor.mode.debug", "Debug")}
+                  </span>
                 </TabsTrigger>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Debug existing code</p>
+                <p>{t("editor.tooltip.debug", "Debug existing code")}</p>
               </TooltipContent>
             </Tooltip>
 
@@ -66,11 +87,13 @@ const OperationModeSelector = ({
                   className="flex items-center gap-2"
                 >
                   <HelpCircle size={16} />
-                  <span className="hidden sm:inline">Explain</span>
+                  <span className="hidden sm:inline">
+                    {t("editor.mode.explain", "Explain")}
+                  </span>
                 </TabsTrigger>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Get explanation for code</p>
+                <p>{t("editor.tooltip.explain", "Get explanation for code")}</p>
               </TooltipContent>
             </Tooltip>
 
@@ -81,11 +104,18 @@ const OperationModeSelector = ({
                   className="flex items-center gap-2"
                 >
                   <GitBranch size={16} />
-                  <span className="hidden sm:inline">Continue</span>
+                  <span className="hidden sm:inline">
+                    {t("editor.mode.continue", "Continue")}
+                  </span>
                 </TabsTrigger>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Continue development from partial implementation</p>
+                <p>
+                  {t(
+                    "editor.tooltip.continue",
+                    "Continue development from partial implementation",
+                  )}
+                </p>
               </TooltipContent>
             </Tooltip>
           </TabsList>

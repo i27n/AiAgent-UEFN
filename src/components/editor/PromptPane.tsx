@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
 import {
@@ -23,26 +23,70 @@ import {
   FileCode,
   HelpCircle,
   Wand2,
+  AlertCircle,
+  Settings,
 } from "lucide-react";
+import { Alert, AlertDescription } from "../ui/alert";
+import { OperationMode } from "./CodeEditor";
+import { verseSnippets } from "@/lib/verse-syntax";
+import { t } from "@/lib/i18n";
 
 interface PromptPaneProps {
-  operationMode?: "generate" | "debug" | "explain" | "continue";
+  operationMode?: OperationMode;
   onSubmit?: (prompt: string) => void;
   isProcessing?: boolean;
+  aiConfigured?: boolean;
 }
 
 const PromptPane = ({
   operationMode = "generate",
   onSubmit = () => {},
   isProcessing = false,
+  aiConfigured = false,
 }: PromptPaneProps) => {
   const [prompt, setPrompt] = useState("");
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<
+    "prompt" | "history" | "templates"
+  >("prompt");
+
+  // Force re-render when language changes
+  const [, setRender] = useState(0);
+
+  useEffect(() => {
+    // Load prompt history from localStorage
+    const savedHistory = localStorage.getItem("promptHistory");
+    if (savedHistory) {
+      try {
+        setPromptHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error("Failed to parse prompt history:", e);
+      }
+    }
+
+    const handleLanguageChange = () => {
+      setRender((prev) => prev + 1);
+    };
+
+    window.addEventListener("languageChanged", handleLanguageChange);
+    return () => {
+      window.removeEventListener("languageChanged", handleLanguageChange);
+    };
+  }, []);
 
   const handleSubmit = () => {
     if (prompt.trim()) {
       onSubmit(prompt);
-      setPromptHistory((prev) => [...prev, prompt]);
+      // Only add to history if not already there
+      if (!promptHistory.includes(prompt)) {
+        const newHistory = [prompt, ...promptHistory];
+        setPromptHistory(newHistory);
+        // Save to localStorage
+        localStorage.setItem(
+          "promptHistory",
+          JSON.stringify(newHistory.slice(0, 20)),
+        ); // Keep only last 20 prompts
+      }
     }
   };
 
@@ -50,33 +94,38 @@ const PromptPane = ({
     setPrompt("");
   };
 
+  const insertTemplate = (templateCode: string) => {
+    setPrompt(templateCode);
+    setActiveTab("prompt");
+  };
+
   const getPlaceholderText = () => {
     switch (operationMode) {
       case "generate":
-        return 'Describe the Verse script you want to create (e.g., "Create a script that spawns enemies when a player enters a trigger zone")...';
+        return t("prompt.placeholder.generate");
       case "debug":
-        return "Paste your Verse code here and describe the issue you're experiencing...";
+        return t("prompt.placeholder.debug");
       case "explain":
-        return "Paste the Verse code you want explained and specify what aspects you want to understand better...";
+        return t("prompt.placeholder.explain");
       case "continue":
-        return "Paste your partial Verse implementation and describe how you want to extend it...";
+        return t("prompt.placeholder.continue");
       default:
-        return "Enter your prompt here...";
+        return t("prompt.title");
     }
   };
 
   const getPromptTitle = () => {
     switch (operationMode) {
       case "generate":
-        return "Generate New Script";
+        return t("editor.mode.generate");
       case "debug":
-        return "Debug Existing Code";
+        return t("editor.mode.debug");
       case "explain":
-        return "Get Explanation";
+        return t("editor.mode.explain");
       case "continue":
-        return "Continue Development";
+        return t("editor.mode.continue");
       default:
-        return "Enter Prompt";
+        return t("prompt.title");
     }
   };
 
@@ -104,10 +153,43 @@ const PromptPane = ({
         </CardTitle>
       </CardHeader>
 
-      <Tabs defaultValue="prompt" className="flex-1 flex flex-col">
+      {!aiConfigured && (
+        <Alert className="mx-4 mb-2 bg-amber-900/20 border-amber-800">
+          <AlertCircle className="h-4 w-4 text-amber-400" />
+          <AlertDescription className="text-amber-200">
+            {t("ai.settings.notConfigured")}{" "}
+            <Button
+              variant="link"
+              className="text-amber-300 underline p-0 h-auto"
+              onClick={() => {
+                // Find and open settings dialog
+                const settingsButton = document.querySelector(
+                  "[data-settings-trigger]",
+                );
+                if (settingsButton) {
+                  (settingsButton as HTMLButtonElement).click();
+                }
+              }}
+            >
+              AI Settings <Settings className="h-3 w-3 inline" />
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) =>
+          setActiveTab(v as "prompt" | "history" | "templates")
+        }
+        className="flex-1 flex flex-col"
+      >
         <TabsList className="mx-4 bg-[#141414]">
-          <TabsTrigger value="prompt">Prompt</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="prompt">{t("prompt.tab.prompt")}</TabsTrigger>
+          <TabsTrigger value="history">{t("prompt.tab.history")}</TabsTrigger>
+          <TabsTrigger value="templates">
+            {t("prompt.tab.templates")}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="prompt" className="flex-1 flex flex-col p-4 pt-2">
@@ -134,7 +216,7 @@ const PromptPane = ({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Clear prompt</p>
+                  <p>{t("prompt.tooltip.clear")}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -144,7 +226,7 @@ const PromptPane = ({
               disabled={!prompt.trim() || isProcessing}
               className="bg-[#2e2e2e] hover:bg-[#3e3e3e] text-[#e1e1e1]"
             >
-              {isProcessing ? "Processing..." : "Submit"}
+              {isProcessing ? t("app.processing") : t("app.submit")}
               {!isProcessing && <Send className="ml-2 h-4 w-4" />}
             </Button>
           </CardFooter>
@@ -165,9 +247,64 @@ const PromptPane = ({
             </div>
           ) : (
             <div className="h-full flex items-center justify-center text-[#8a8a8a]">
-              <p>No prompt history yet</p>
+              <p>{t("prompt.history.empty")}</p>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent
+          value="templates"
+          className="flex-1 p-4 pt-2 overflow-auto"
+        >
+          <div className="space-y-4">
+            <div
+              className="p-3 bg-[#141414] rounded-md border border-[#2e2e2e] cursor-pointer hover:bg-[#1f1f1f] transition-colors"
+              onClick={() => insertTemplate(verseSnippets.basicScript)}
+            >
+              <h3 className="font-medium text-[#f3f3f3] mb-1">
+                {t("template.basic.title")}
+              </h3>
+              <p className="text-[#a0a0a0] text-sm">
+                {t("template.basic.description")}
+              </p>
+            </div>
+
+            <div
+              className="p-3 bg-[#141414] rounded-md border border-[#2e2e2e] cursor-pointer hover:bg-[#1f1f1f] transition-colors"
+              onClick={() => insertTemplate(verseSnippets.playerMovement)}
+            >
+              <h3 className="font-medium text-[#f3f3f3] mb-1">
+                {t("template.player.title")}
+              </h3>
+              <p className="text-[#a0a0a0] text-sm">
+                {t("template.player.description")}
+              </p>
+            </div>
+
+            <div
+              className="p-3 bg-[#141414] rounded-md border border-[#2e2e2e] cursor-pointer hover:bg-[#1f1f1f] transition-colors"
+              onClick={() => insertTemplate(verseSnippets.triggerSetup)}
+            >
+              <h3 className="font-medium text-[#f3f3f3] mb-1">
+                {t("template.trigger.title")}
+              </h3>
+              <p className="text-[#a0a0a0] text-sm">
+                {t("template.trigger.description")}
+              </p>
+            </div>
+
+            <div
+              className="p-3 bg-[#141414] rounded-md border border-[#2e2e2e] cursor-pointer hover:bg-[#1f1f1f] transition-colors"
+              onClick={() => insertTemplate(verseSnippets.gameFlow)}
+            >
+              <h3 className="font-medium text-[#f3f3f3] mb-1">
+                {t("template.ui.title")}
+              </h3>
+              <p className="text-[#a0a0a0] text-sm">
+                {t("template.ui.description")}
+              </p>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </Card>

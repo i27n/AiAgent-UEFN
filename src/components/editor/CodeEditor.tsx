@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -7,9 +7,11 @@ import {
 import OperationModeSelector from "./OperationModeSelector";
 import PromptPane from "./PromptPane";
 import CodeOutputPane from "./CodeOutputPane";
+import { getAIService } from "@/lib/ai";
+import { validateVerseSyntax, formatVerseCode } from "@/lib/verse-syntax";
 
 // Define the OperationMode type here since it's not exported from OperationModeSelector
-type OperationMode = "generate" | "debug" | "explain" | "continue";
+export type OperationMode = "generate" | "debug" | "explain" | "continue";
 
 interface CodeEditorProps {
   initialMode?: OperationMode;
@@ -29,6 +31,13 @@ const CodeEditor = ({
   const [errors, setErrors] = useState<
     Array<{ line: number; message: string }>
   >([]);
+  const [aiConfigured, setAiConfigured] = useState(false);
+
+  // Check if AI is configured on component mount
+  useEffect(() => {
+    const apiKey = localStorage.getItem("geminiApiKey");
+    setAiConfigured(!!apiKey);
+  }, []);
 
   const handleModeChange = (mode: OperationMode) => {
     setOperationMode(mode);
@@ -39,82 +48,87 @@ const CodeEditor = ({
     setErrors([]);
 
     try {
-      // Simulate AI processing with a timeout
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const apiKey = localStorage.getItem("geminiApiKey");
 
-      // Mock generated code based on operation mode
-      let mockCode = "";
-      switch (operationMode) {
-        case "generate":
-          mockCode = `using { /Script/VerseEngine }
-
-verse function GeneratedScript() : void
-{
-    // Generated from prompt: "${prompt}"
-    Print("Generated script based on your prompt")
-    
-    // Main functionality would be implemented here
-    // based on the specific requirements
-}`;
-          break;
-        case "debug":
-          mockCode = `// Debugged version of your code
-${prompt.includes("{") ? prompt : "// No valid code found in prompt"}
-
-// Debug notes:
-// - Fixed syntax errors
-// - Optimized performance
-// - Added error handling`;
-          break;
-        case "explain":
-          mockCode = `// Explanation of the code:
-${prompt.includes("{") ? prompt : "// No valid code found in prompt"}
-
-/*
-Code Explanation:
-- This Verse script defines a function that...
-- The main purpose is to...
-- Key components include...
-*/`;
-          break;
-        case "continue":
-          mockCode = `${prompt.includes("{") ? prompt : "// No valid code found in prompt"}
-
-// Additional implementation:
-verse function ExtendedFeature() : void
-{
-    // This extends the functionality of your code
-    // with the features you requested
-    Print("Extended functionality added")
-}`;
-          break;
-        default:
-          mockCode = "// No operation mode selected";
+      if (!apiKey) {
+        throw new Error(
+          "Gemini API key not configured. Please set it in the AI Settings.",
+        );
       }
 
-      setGeneratedCode(mockCode);
-      onCodeGenerated(mockCode);
+      // Get AI settings from localStorage
+      const aiSettingsStr = localStorage.getItem("aiSettings");
+      const aiSettings = aiSettingsStr ? JSON.parse(aiSettingsStr) : {};
+      const autoValidate =
+        aiSettings.autoValidate !== undefined ? aiSettings.autoValidate : true;
+      const autoFormat =
+        aiSettings.autoFormat !== undefined ? aiSettings.autoFormat : true;
 
-      // Randomly add mock errors for demonstration purposes (20% chance)
-      if (Math.random() < 0.2) {
-        const mockErrors = [
-          {
-            line: Math.floor(Math.random() * mockCode.split("\n").length) + 1,
-            message: "Syntax error: unexpected token",
-          },
-          {
-            line: Math.floor(Math.random() * mockCode.split("\n").length) + 1,
-            message: "Type mismatch in expression",
-          },
-        ];
-        setErrors(mockErrors);
+      // Initialize AI service
+      const aiService = getAIService({
+        apiKey,
+        model: aiSettings.model || "gemini-2.0-flash",
+        temperature: aiSettings.temperature || 0.7,
+        maxTokens: aiSettings.maxTokens || 2048,
+      });
+
+      // Generate code based on operation mode
+      let response;
+      switch (operationMode) {
+        case "generate":
+          response = await aiService.generateVerseCode(prompt);
+          break;
+        case "debug":
+          response = await aiService.debugVerseCode(
+            prompt,
+            "Please debug this code",
+          );
+          break;
+        case "explain":
+          response = await aiService.explainVerseCode(prompt);
+          break;
+        case "continue":
+          response = await aiService.continueVerseCode(
+            prompt,
+            "Please continue or extend this code",
+          );
+          break;
+        default:
+          throw new Error("Invalid operation mode");
+      }
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      let generatedCode = response.content;
+
+      // Format code if enabled
+      if (autoFormat) {
+        try {
+          generatedCode = formatVerseCode(generatedCode);
+        } catch (formatError) {
+          console.error("Error formatting code:", formatError);
+        }
+      }
+
+      setGeneratedCode(generatedCode);
+      onCodeGenerated(generatedCode);
+
+      // Validate code if enabled
+      if (autoValidate) {
+        const validationErrors = validateVerseSyntax(generatedCode);
+        setErrors(validationErrors);
       }
     } catch (error) {
       console.error("Error processing prompt:", error);
       setErrors([
         {
           line: 1,
-          message: "Failed to process your prompt. Please try again.",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to process your prompt. Please try again.",
         },
       ]);
     } finally {
@@ -148,6 +162,7 @@ verse function ExtendedFeature() : void
             operationMode={operationMode}
             onSubmit={handlePromptSubmit}
             isProcessing={isProcessing}
+            aiConfigured={aiConfigured}
           />
         </ResizablePanel>
 

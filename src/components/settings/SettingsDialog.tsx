@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Settings,
   Moon,
@@ -20,6 +20,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { t } from "@/lib/i18n";
+import LanguageSelector from "./LanguageSelector";
 
 interface SettingsDialogProps {
   open?: boolean;
@@ -34,6 +36,93 @@ const SettingsDialog = ({ open = true, onOpenChange }: SettingsDialogProps) => {
   const [lineNumbers, setLineNumbers] = useState(true);
   const [language, setLanguage] = useState("english");
 
+  // Force re-render when language changes
+  const [, setRender] = useState(0);
+
+  useEffect(() => {
+    const handleLanguageChange = () => {
+      setRender((prev) => prev + 1);
+    };
+
+    window.addEventListener("languageChanged", handleLanguageChange);
+    return () => {
+      window.removeEventListener("languageChanged", handleLanguageChange);
+    };
+  }, []);
+
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") as
+      | "system"
+      | "dark"
+      | "light";
+    if (savedTheme) setTheme(savedTheme);
+
+    const savedEditorSettings = localStorage.getItem("editorSettings");
+    if (savedEditorSettings) {
+      try {
+        const settings = JSON.parse(savedEditorSettings);
+        setAutoSave(settings.autoSave !== undefined ? settings.autoSave : true);
+        setSyntaxHighlighting(
+          settings.syntaxHighlighting !== undefined
+            ? settings.syntaxHighlighting
+            : true,
+        );
+        setRealTimeValidation(
+          settings.realTimeValidation !== undefined
+            ? settings.realTimeValidation
+            : true,
+        );
+        setLineNumbers(
+          settings.lineNumbers !== undefined ? settings.lineNumbers : true,
+        );
+      } catch (e) {
+        console.error("Failed to parse editor settings:", e);
+      }
+    }
+  }, []);
+
+  const handleSaveSettings = () => {
+    // Save theme
+    localStorage.setItem("theme", theme);
+
+    // Save editor settings
+    localStorage.setItem(
+      "editorSettings",
+      JSON.stringify({
+        autoSave,
+        syntaxHighlighting,
+        realTimeValidation,
+        lineNumbers,
+      }),
+    );
+
+    // Apply theme to document
+    document.documentElement.classList.remove("light", "dark");
+    if (theme === "light") {
+      document.documentElement.classList.add("light");
+    } else if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      // System theme - check user preference
+      if (
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches
+      ) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.add("light");
+      }
+    }
+
+    // Close dialog if onOpenChange is provided
+    if (onOpenChange) onOpenChange(false);
+  };
+
+  const handleCancel = () => {
+    if (onOpenChange) onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
@@ -41,6 +130,7 @@ const SettingsDialog = ({ open = true, onOpenChange }: SettingsDialogProps) => {
           variant="ghost"
           size="icon"
           className="bg-[#1b1b1b] text-[#e1e1e1]"
+          data-settings-trigger
         >
           <Settings className="h-5 w-5" />
           <span className="sr-only">Settings</span>
@@ -48,8 +138,9 @@ const SettingsDialog = ({ open = true, onOpenChange }: SettingsDialogProps) => {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] bg-[#141414] text-[#e1e1e1] border-[#2e2e2e]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-[#f3f3f3]">
-            Settings
+          <DialogTitle className="text-xl font-bold text-[#f3f3f3] flex items-center justify-between">
+            <span>{t("ai.settings.title")}</span>
+            <LanguageSelector />
           </DialogTitle>
         </DialogHeader>
 
@@ -161,16 +252,26 @@ const SettingsDialog = ({ open = true, onOpenChange }: SettingsDialogProps) => {
                 <Button
                   variant={language === "english" ? "default" : "outline"}
                   className={`${language === "english" ? "bg-primary" : "bg-[#1b1b1b]"}`}
-                  onClick={() => setLanguage("english")}
+                  onClick={() => {
+                    setLanguage("english");
+                    import("@/lib/i18n").then(({ setLanguage }) =>
+                      setLanguage("en"),
+                    );
+                  }}
                 >
                   English
                 </Button>
                 <Button
-                  variant={language === "spanish" ? "default" : "outline"}
-                  className={`${language === "spanish" ? "bg-primary" : "bg-[#1b1b1b]"}`}
-                  onClick={() => setLanguage("spanish")}
+                  variant={language === "arabic" ? "default" : "outline"}
+                  className={`${language === "arabic" ? "bg-primary" : "bg-[#1b1b1b]"}`}
+                  onClick={() => {
+                    setLanguage("arabic");
+                    import("@/lib/i18n").then(({ setLanguage }) =>
+                      setLanguage("ar"),
+                    );
+                  }}
                 >
-                  Spanish
+                  العربية
                 </Button>
               </div>
 
@@ -194,11 +295,15 @@ const SettingsDialog = ({ open = true, onOpenChange }: SettingsDialogProps) => {
           <Button
             variant="outline"
             className="bg-[#1b1b1b] hover:bg-[#2e2e2e] text-[#e1e1e1]"
+            onClick={handleCancel}
           >
-            Cancel
+            {t("app.cancel")}
           </Button>
-          <Button className="bg-[#2e2e2e] hover:bg-[#3e3e3e] text-[#f3f3f3]">
-            Save Changes
+          <Button
+            className="bg-[#2e2e2e] hover:bg-[#3e3e3e] text-[#f3f3f3]"
+            onClick={handleSaveSettings}
+          >
+            {t("app.save")}
           </Button>
         </DialogFooter>
       </DialogContent>
