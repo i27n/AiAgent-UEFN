@@ -98,6 +98,10 @@ const translations: Translations = {
   },
 
   // Templates
+  "templates.title": {
+    en: "Verse Templates",
+    ar: "قوالب Verse",
+  },
   "template.basic.title": {
     en: "Basic Script Template",
     ar: "قالب سكربت أساسي",
@@ -129,6 +133,24 @@ const translations: Translations = {
   "template.ui.description": {
     en: "A template for creating UI elements in Verse",
     ar: "قالب لإنشاء عناصر واجهة المستخدم في Verse",
+  },
+
+  // History
+  "history.title": {
+    en: "Prompt History",
+    ar: "سجل الطلبات",
+  },
+  "history.clear": {
+    en: "Clear",
+    ar: "مسح",
+  },
+  "history.empty": {
+    en: "No prompt history yet",
+    ar: "لا يوجد سجل طلبات حتى الآن",
+  },
+  "history.no_results": {
+    en: "No matching history items",
+    ar: "لا توجد عناصر سجل مطابقة",
   },
 
   // AI Settings

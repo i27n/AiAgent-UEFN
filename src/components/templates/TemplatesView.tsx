@@ -1,98 +1,137 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { ScrollArea } from "../ui/scroll-area";
 import { Input } from "../ui/input";
-import { Search } from "lucide-react";
+import { Button } from "../ui/button";
+import { Search, Plus, RefreshCw } from "lucide-react";
 import TemplateCard from "./TemplateCard";
 import { verseSnippets } from "@/lib/verse-syntax";
 import { t } from "@/lib/i18n";
+import { loadTemplates, Template } from "@/lib/templates";
+import ImportTemplateDialog from "./ImportTemplateDialog";
+import NewTemplateDialog from "./NewTemplateDialog";
 
 interface TemplatesViewProps {
   onSelectTemplate: (code: string) => void;
 }
 
-interface Template {
+interface TemplateCategory {
   id: string;
-  title: string;
-  description: string;
-  code: string;
-  category?: string;
+  name: string;
+  templates: Template[];
 }
 
 const TemplatesView = ({ onSelectTemplate }: TemplatesViewProps) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [categories, setCategories] = useState<TemplateCategory[]>([]);
+  const [userTemplates, setUserTemplates] = useState<Template[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Define template categories
-  const categories = [
-    {
-      id: "basics",
-      name: t("templates.category.basics", "Basics"),
-      templates: [
-        {
-          id: "basicScript",
-          title: t("template.basic.title", "Basic Script Template"),
-          description: t(
-            "template.basic.description",
-            "A simple Verse script with a basic function structure",
-          ),
-          code: verseSnippets.basicScript,
-          category: "Beginner",
-        },
-      ],
-    },
-    {
-      id: "gameplay",
-      name: t("templates.category.gameplay", "Gameplay"),
-      templates: [
-        {
-          id: "playerMovement",
-          title: t("template.player.title", "Player Movement Template"),
-          description: t(
-            "template.player.description",
-            "A template for handling basic player movement",
-          ),
-          code: verseSnippets.playerMovement,
-          category: "Intermediate",
-        },
-        {
-          id: "triggerSetup",
-          title: t("template.trigger.title", "Trigger Zone Template"),
-          description: t(
-            "template.trigger.description",
-            "A template for creating interactive trigger zones",
-          ),
-          code: verseSnippets.triggerSetup,
-          category: "Intermediate",
-        },
-      ],
-    },
-    {
-      id: "systems",
-      name: t("templates.category.systems", "Systems"),
-      templates: [
-        {
-          id: "gameFlow",
-          title: t("template.ui.title", "UI Component Template"),
-          description: t(
-            "template.ui.description",
-            "A template for creating UI elements in Verse",
-          ),
-          code: verseSnippets.gameFlow,
-          category: "Advanced",
-        },
-        {
-          id: "itemGranter",
-          title: t("template.items.title", "Item Granter Template"),
-          description: t(
-            "template.items.description",
-            "A template for granting items to players",
-          ),
-          code: verseSnippets.itemGranter || "",
-          category: "Intermediate",
-        },
-      ],
-    },
-  ];
+  // Load built-in templates and user templates
+  useEffect(() => {
+    // Built-in templates from verse-syntax
+    const builtInCategories = [
+      {
+        id: "basics",
+        name: t("templates.category.basics", "Basics"),
+        templates: [
+          {
+            id: "basicScript",
+            title: t("template.basic.title", "Basic Script Template"),
+            description: t(
+              "template.basic.description",
+              "A simple Verse script with a basic function structure",
+            ),
+            code: verseSnippets.basicScript,
+            category: "Beginner",
+            createdAt: 0,
+            updatedAt: 0,
+            source: "default",
+          },
+        ],
+      },
+      {
+        id: "gameplay",
+        name: t("templates.category.gameplay", "Gameplay"),
+        templates: [
+          {
+            id: "playerMovement",
+            title: t("template.player.title", "Player Movement Template"),
+            description: t(
+              "template.player.description",
+              "A template for handling basic player movement",
+            ),
+            code: verseSnippets.playerMovement,
+            category: "Intermediate",
+            createdAt: 0,
+            updatedAt: 0,
+            source: "default",
+          },
+          {
+            id: "triggerSetup",
+            title: t("template.trigger.title", "Trigger Zone Template"),
+            description: t(
+              "template.trigger.description",
+              "A template for creating interactive trigger zones",
+            ),
+            code: verseSnippets.triggerSetup,
+            category: "Intermediate",
+            createdAt: 0,
+            updatedAt: 0,
+            source: "default",
+          },
+        ],
+      },
+      {
+        id: "systems",
+        name: t("templates.category.systems", "Systems"),
+        templates: [
+          {
+            id: "gameFlow",
+            title: t("template.ui.title", "UI Component Template"),
+            description: t(
+              "template.ui.description",
+              "A template for creating UI elements in Verse",
+            ),
+            code: verseSnippets.gameFlow,
+            category: "Advanced",
+            createdAt: 0,
+            updatedAt: 0,
+            source: "default",
+          },
+          {
+            id: "itemGranter",
+            title: t("template.items.title", "Item Granter Template"),
+            description: t(
+              "template.items.description",
+              "A template for granting items to players",
+            ),
+            code: verseSnippets.itemGranter || "",
+            category: "Intermediate",
+            createdAt: 0,
+            updatedAt: 0,
+            source: "default",
+          },
+        ],
+      },
+    ];
+
+    // Load user templates
+    const loadedUserTemplates = loadTemplates();
+    setUserTemplates(loadedUserTemplates);
+
+    // Create a user templates category if there are any user templates
+    const allCategories = [...builtInCategories];
+    if (loadedUserTemplates.length > 0) {
+      allCategories.unshift({
+        id: "user",
+        name: "My Templates",
+        templates: loadedUserTemplates,
+      });
+    }
+
+    setCategories(allCategories);
+  }, [refreshKey]);
 
   // Flatten all templates for search
   const allTemplates: Template[] = categories.flatMap((category) =>
@@ -114,9 +153,25 @@ const TemplatesView = ({ onSelectTemplate }: TemplatesViewProps) => {
             (template.category &&
               template.category
                 .toLowerCase()
-                .includes(searchQuery.toLowerCase())),
+                .includes(searchQuery.toLowerCase())) ||
+            (template.tags &&
+              template.tags.some((tag) =>
+                tag.toLowerCase().includes(searchQuery.toLowerCase()),
+              )),
         )
       : [];
+
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1);
+  };
+
+  const handleImportSuccess = () => {
+    handleRefresh();
+  };
+
+  const handleCreateSuccess = () => {
+    handleRefresh();
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -130,6 +185,22 @@ const TemplatesView = ({ onSelectTemplate }: TemplatesViewProps) => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+      </div>
+
+      <div className="px-4 pb-4 flex justify-between items-center">
+        <div className="flex space-x-2">
+          <NewTemplateDialog onCreateSuccess={handleCreateSuccess} />
+          <ImportTemplateDialog onImportSuccess={handleImportSuccess} />
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleRefresh}
+          className="h-8 px-2 text-[#a0a0a0] hover:text-[#f3f3f3] hover:bg-[#2e2e2e]"
+          title="Refresh templates"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </Button>
       </div>
 
       {searchQuery.trim() !== "" ? (
@@ -148,13 +219,20 @@ const TemplatesView = ({ onSelectTemplate }: TemplatesViewProps) => {
                   code={template.code}
                   category={template.category}
                   onSelect={onSelectTemplate}
+                  source={template.source}
+                  sourceUrl={template.sourceUrl}
+                  id={template.id}
+                  onRefresh={handleRefresh}
                 />
               ))}
             </div>
           </ScrollArea>
         </div>
       ) : (
-        <Tabs defaultValue="basics" className="flex-1 px-4">
+        <Tabs
+          defaultValue={categories[0]?.id || "basics"}
+          className="flex-1 px-4"
+        >
           <TabsList className="bg-[#141414] mb-4">
             {categories.map((category) => (
               <TabsTrigger key={category.id} value={category.id}>
@@ -175,6 +253,10 @@ const TemplatesView = ({ onSelectTemplate }: TemplatesViewProps) => {
                       code={template.code}
                       category={template.category}
                       onSelect={onSelectTemplate}
+                      source={template.source}
+                      sourceUrl={template.sourceUrl}
+                      id={template.id}
+                      onRefresh={handleRefresh}
                     />
                   ))}
                 </div>

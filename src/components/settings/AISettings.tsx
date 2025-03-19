@@ -16,6 +16,8 @@ import {
   Cpu,
   Wrench,
   Globe,
+  AlertCircle,
+  CheckCircle,
 } from "lucide-react";
 import { getAIService } from "@/lib/ai";
 import { t } from "@/lib/i18n";
@@ -69,10 +71,19 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
     "You are an expert Verse programmer for Unreal Engine Fortnite (UEFN). Your task is to generate high-quality, optimized Verse code based on user requests. Include detailed comments and follow best practices.",
   );
 
+  // Status
+  const [apiKeyStatus, setApiKeyStatus] = useState<
+    "none" | "valid" | "invalid" | "testing"
+  >("none");
+  const [statusMessage, setStatusMessage] = useState("");
+
   // Load settings from localStorage on mount
   useEffect(() => {
     const savedApiKey = localStorage.getItem("geminiApiKey");
-    if (savedApiKey) setApiKey(savedApiKey);
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+      setApiKeyStatus("valid"); // Assume it's valid if it exists
+    }
 
     const savedSettings = localStorage.getItem("aiSettings");
     if (savedSettings) {
@@ -117,8 +128,15 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
   const handleSaveSettings = () => {
     // Show saving indicator
     toastManager.info("Saving settings...");
-    // Initialize the AI service with the new settings
-    if (apiKey) {
+
+    try {
+      // Validate API key
+      if (!apiKey.trim()) {
+        toastManager.error("API key is required");
+        return;
+      }
+
+      // Initialize the AI service with the new settings
       getAIService({
         apiKey,
         model,
@@ -162,23 +180,17 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
       // Store API key separately and more securely
       localStorage.setItem("geminiApiKey", apiKey);
 
-      // Apply settings immediately
-      document.documentElement.style.setProperty(
-        "--font-family",
-        "Helvetica, sans-serif",
-      );
-
       // Show success message using toast
       toastManager.success("Settings saved and applied successfully!");
+      setApiKeyStatus("valid");
 
-      // Reload the page to apply settings fully
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-
+      // Call the onSave callback
       onSave();
-    } else {
-      toastManager.error("API key is required to save settings");
+    } catch (error) {
+      toastManager.error(
+        `Failed to save settings: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+      setApiKeyStatus("invalid");
     }
   };
 
@@ -211,6 +223,9 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
       return;
     }
 
+    setApiKeyStatus("testing");
+    setStatusMessage("Testing connection...");
+
     try {
       const aiService = getAIService({
         apiKey,
@@ -225,8 +240,14 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
         throw new Error(response.error);
       }
 
+      setApiKeyStatus("valid");
+      setStatusMessage("Connection successful! API key is valid.");
       toastManager.success("Connection successful! API key is valid.");
     } catch (error) {
+      setApiKeyStatus("invalid");
+      setStatusMessage(
+        `Connection failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
       toastManager.error(
         `Connection failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
@@ -238,7 +259,7 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
       <CardHeader className="px-4 py-3 flex flex-row items-center justify-between bg-[#141414] border-b border-[#2e2e2e]">
         <CardTitle className="text-[#e1e1e1] text-lg font-medium flex items-center">
           <Brain className="mr-2 h-5 w-5" />
-          {t("ai.settings.title")}
+          {t("ai.settings.title", "AI Settings")}
         </CardTitle>
         <div className="flex items-center space-x-2">
           <Button
@@ -246,9 +267,19 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
             size="sm"
             onClick={handleTestConnection}
             className="bg-[#141414] border-[#2e2e2e] hover:bg-[#2e2e2e] text-[#e1e1e1]"
+            disabled={apiKeyStatus === "testing" || !apiKey.trim()}
           >
-            <Zap className="mr-2 h-4 w-4" />
-            Test Connection
+            {apiKeyStatus === "testing" ? (
+              <>
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
+                Testing...
+              </>
+            ) : (
+              <>
+                <Zap className="mr-2 h-4 w-4" />
+                Test Connection
+              </>
+            )}
           </Button>
           <LanguageSelector />
         </div>
@@ -278,19 +309,33 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
           <TabsContent value="api" className="space-y-4 mt-4">
             <div className="space-y-2">
               <Label htmlFor="api-key" className="text-[#e1e1e1]">
-                {t("ai.settings.apiKey")}
+                {t("ai.settings.apiKey", "API Key")}
               </Label>
-              <Input
-                id="api-key"
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder={t("ai.settings.apiKey.placeholder")}
-                className="bg-[#141414] border-[#2e2e2e] text-[#e1e1e1] w-full"
-                dir="ltr"
-              />
+              <div className="relative">
+                <Input
+                  id="api-key"
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => {
+                    setApiKey(e.target.value);
+                    setApiKeyStatus(e.target.value.trim() ? "none" : "invalid");
+                  }}
+                  placeholder={t(
+                    "ai.settings.apiKey.placeholder",
+                    "Enter your Gemini API key here",
+                  )}
+                  className="bg-[#141414] border-[#2e2e2e] text-[#e1e1e1] w-full pr-10"
+                  dir="ltr"
+                />
+                {apiKeyStatus === "valid" && (
+                  <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-green-500" />
+                )}
+                {apiKeyStatus === "invalid" && (
+                  <AlertCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-red-500" />
+                )}
+              </div>
               <p className="text-xs text-[#a0a0a0]">
-                {t("ai.settings.apiKey.help")}{" "}
+                {t("ai.settings.apiKey.help", "Get your API key from")}{" "}
                 <a
                   href="https://ai.google.dev/"
                   target="_blank"
@@ -300,11 +345,18 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
                   Google AI Studio
                 </a>
               </p>
+              {statusMessage && (
+                <p
+                  className={`text-sm mt-2 ${apiKeyStatus === "valid" ? "text-green-400" : apiKeyStatus === "invalid" ? "text-red-400" : "text-[#a0a0a0]"}`}
+                >
+                  {statusMessage}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="model" className="text-[#e1e1e1]">
-                {t("ai.settings.model")}
+                {t("ai.settings.model", "Model")}
               </Label>
               <select
                 id="model"
@@ -349,14 +401,15 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label htmlFor="temperature" className="text-[#e1e1e1]">
-                    {t("ai.settings.temperature")}: {temperature.toFixed(1)}
+                    {t("ai.settings.temperature", "Temperature")}:{" "}
+                    {temperature.toFixed(1)}
                   </Label>
                   <span className="text-xs text-[#a0a0a0]">
                     {temperature < 0.3
-                      ? t("ai.settings.temperature.focused")
+                      ? t("ai.settings.temperature.focused", "Focused")
                       : temperature > 0.7
-                        ? t("ai.settings.temperature.creative")
-                        : t("ai.settings.temperature.balanced")}
+                        ? t("ai.settings.temperature.creative", "Creative")
+                        : t("ai.settings.temperature.balanced", "Balanced")}
                   </span>
                 </div>
                 <Slider
@@ -377,14 +430,14 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label htmlFor="max-tokens" className="text-[#e1e1e1]">
-                    {t("ai.settings.maxTokens")}: {maxTokens}
+                    {t("ai.settings.maxTokens", "Max Tokens")}: {maxTokens}
                   </Label>
                   <span className="text-xs text-[#a0a0a0]">
                     {maxTokens < 1000
-                      ? t("ai.settings.maxTokens.shorter")
+                      ? t("ai.settings.maxTokens.shorter", "Shorter")
                       : maxTokens > 3000
-                        ? t("ai.settings.maxTokens.longer")
-                        : t("ai.settings.maxTokens.medium")}
+                        ? t("ai.settings.maxTokens.longer", "Longer")
+                        : t("ai.settings.maxTokens.medium", "Medium")}
                   </span>
                 </div>
                 <Slider
@@ -451,10 +504,13 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
               <div className="flex items-center justify-between pt-2">
                 <div>
                   <Label htmlFor="auto-validate" className="text-[#e1e1e1]">
-                    {t("ai.settings.autoValidate")}
+                    {t("ai.settings.autoValidate", "Auto Validate")}
                   </Label>
                   <p className="text-xs text-[#a0a0a0]">
-                    {t("ai.settings.autoValidate.description")}
+                    {t(
+                      "ai.settings.autoValidate.description",
+                      "Automatically validate code after generation",
+                    )}
                   </p>
                 </div>
                 <Switch
@@ -467,10 +523,13 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
               <div className="flex items-center justify-between pt-2">
                 <div>
                   <Label htmlFor="auto-format" className="text-[#e1e1e1]">
-                    {t("ai.settings.autoFormat")}
+                    {t("ai.settings.autoFormat", "Auto Format")}
                   </Label>
                   <p className="text-xs text-[#a0a0a0]">
-                    {t("ai.settings.autoFormat.description")}
+                    {t(
+                      "ai.settings.autoFormat.description",
+                      "Automatically format code after generation",
+                    )}
                   </p>
                 </div>
                 <Switch
@@ -634,11 +693,11 @@ const AISettings = ({ onSave = () => {} }: AISettingsProps) => {
           </Button>
           <Button
             onClick={handleSaveSettings}
-            disabled={!apiKey}
+            disabled={!apiKey.trim()}
             className="bg-[#2e2e2e] hover:bg-[#3e3e3e] text-[#f3f3f3]"
           >
             <Save className="mr-2 h-4 w-4" />
-            {t("ai.settings.save")}
+            {t("ai.settings.save", "Save Settings")}
           </Button>
         </div>
       </CardContent>
